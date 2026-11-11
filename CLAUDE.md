@@ -32,7 +32,15 @@ NAO validado (confirmar no servidor, nesta ordem):
    (ex.: `for i in $(seq 40); do curl -s -o /dev/null -w "%{http_code} " https://oipp.each.usp.br/api/anos; done`);
    que o nginx le o IP real do cliente (X-Forwarded-For); que a porta 5432 nao esta acessivel de fora;
    `docker compose config` valida o YAML e `nginx -t` (dentro do container web) valida a configuracao.
-8. Host: firewall liberando so 22/80/443, SSH por chave, atualizacoes automaticas de seguranca.
+8. Host (Docker no Ubuntu) - conferir cada item do README, secao "Endurecimento do servidor", e
+   relatar ao usuario o que esta OK e o que falta; nao alterar o host sem o usuario confirmar:
+   - Docker ignora o UFW: `docker ps --format '{{.Names}} {{.Ports}}'` so pode mostrar 80/443 (caddy);
+     `sudo ss -tlnp` e `sudo ufw status verbose`; de fora, 5432 deve estar fechada.
+   - `/etc/docker/daemon.json` com rotacao de logs, `live-restore` e `no-new-privileges`
+     (userns-remap/rootless e opcional: testar e, se quebrar a pilha, manter o padrao).
+   - Grupo `docker` so com o administrador; nenhum container monta `docker.sock`.
+   - SSH so por chave (`PasswordAuthentication no`, `PermitRootLogin no`); `unattended-upgrades` ativo.
+   Decisao do usuario: ficar com Docker Compose (k3s/Podman nao trazem ganho de seguranca por si so).
 
 ## Regras
 - Nunca commitar `.env`, ZIPs ou qualquer coisa de `data/`. Senhas so no `.env` do servidor.

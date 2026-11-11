@@ -45,9 +45,39 @@ internet, entao ha defesa em camadas:
 | Banco | usuario da API sem escrita (`default_transaction_read_only`), `statement_timeout` de 30 s e limite de 20 conexoes; autenticacao SCRAM |
 | Containers | usuario sem privilegios, sistema de arquivos somente leitura, `cap_drop: ALL`, `no-new-privileges`; dependencias Python com versao fixa e imagens com tag de versao |
 
-No servidor (fora do repositorio): manter firewall liberando apenas 22, 80 e 443, SSH por chave, e
-atualizacoes de seguranca do sistema. Nunca versionar `.env`. Vulnerabilidades: nao abra *issue*
-publica; fale diretamente com os mantenedores.
+Nunca versionar `.env`. Vulnerabilidades: nao abra *issue* publica; fale diretamente com os
+mantenedores.
+
+### Endurecimento do servidor (Docker no Ubuntu)
+
+Configuracao do host, fora do repositorio:
+
+1. **Portas e firewall.** O Docker publica portas direto no iptables e **ignora o UFW**. Por isso o
+   `docker-compose.yml` publica somente 80 e 443 (servico `caddy`) e o banco nao tem porta. Nao
+   adicione `ports:` a outros servicos. Confira com `docker ps --format '{{.Names}} {{.Ports}}'` e,
+   de outra maquina, com `nmap <servidor>`: so devem responder 22, 80 e 443. Mantenha o UFW liberando
+   apenas essas portas para o restante do host.
+2. **Daemon do Docker** (`/etc/docker/daemon.json`, depois `sudo systemctl restart docker`):
+   ```json
+   {
+     "log-driver": "local",
+     "log-opts": { "max-size": "10m", "max-file": "5" },
+     "live-restore": true,
+     "no-new-privileges": true
+   }
+   ```
+   Rotaciona logs (evita encher o disco) e nega elevacao de privilegios por padrao.
+3. **Root do container nao e root do host (opcional, testar).** `"userns-remap": "default"` no mesmo
+   arquivo, ou Docker *rootless*. Ressalvas: com `userns-remap` a pasta `./data` precisa ser gravavel
+   pelo usuario remapeado; no modo rootless as portas 80/443 exigem
+   `net.ipv4.ip_unprivileged_port_start=80`. Se quebrar a pilha, mantenha o daemon padrao: as demais
+   medidas (containers sem privilegios, `cap_drop`, rede interna) ja reduzem o risco.
+4. **Acesso ao Docker.** O grupo `docker` equivale a root: so o administrador nele
+   (`getent group docker`). Nenhum container monta `/var/run/docker.sock` (o compose nao monta).
+5. **SSH.** Apenas chave: `PasswordAuthentication no` e `PermitRootLogin no` em
+   `/etc/ssh/sshd_config.d/`; considere `fail2ban`.
+6. **Atualizacoes.** `unattended-upgrades` para o sistema operacional e, periodicamente,
+   `docker compose pull && docker compose up -d --build` para atualizar as imagens base.
 
 ## Modelo de dados
 
