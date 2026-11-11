@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
@@ -32,7 +32,10 @@ AGRUPAMENTOS = {
     "localizacao": ["e.tp_localizacao"],
     "escola": ["e.co_entidade", "e.no_entidade", "e.sg_uf", "e.no_municipio"],
 }
-LIMITE_MAXIMO = 100_000
+LIMITE_MAXIMO = 100_000   # linhas por consulta em CSV
+LIMITE_JSON = 10_000      # linhas por consulta em JSON
+TAMANHO_MAX_TEXTO = 100   # caracteres por filtro de texto
+MAX_VARIAVEIS = 50
 
 pool: ConnectionPool | None = None
 
@@ -54,9 +57,18 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="API do Censo Escolar - OIPP/EACH-USP",
-    description="Consulta aos microdados do Censo Escolar (Inep) carregados em base local.",
+    description="Consulta aos microdados do Censo Escolar (Inep) carregados em base local. "
+                "Somente leitura; dados publicos agregados por escola.",
     version="1.0.0", lifespan=lifespan,
 )
+
+
+@app.exception_handler(Exception)
+async def erro_interno(request, exc):
+    """Nao vaza detalhes internos (SQL, host, etc.) em respostas publicas."""
+    import logging
+    logging.getLogger("uvicorn.error").exception("Erro nao tratado em %s", request.url.path)
+    return JSONResponse({"detail": "Erro interno ao processar a consulta."}, status_code=500)
 
 
 # ---------------------------------------------------------------- utilitarios
@@ -88,6 +100,15 @@ def validar_ano(ano: int) -> None:
     if not consultar("SELECT 1 FROM ano_censo WHERE nu_ano_censo = %s", [ano]):
         anos = [r["nu_ano_censo"] for r in consultar("SELECT nu_ano_censo FROM ano_censo ORDER BY 1", [])]
         raise HTTPException(404, f"Ano {ano} nao carregado. Anos disponiveis: {anos}")
+
+
+def checar_entrada(limite: int, formato: str, **textos: Optional[str]) -> None:
+    """Limites defensivos para a API publica (tamanho de texto e de resposta)."""
+    if formato == "json" and limite > LIMITE_JSON:
+        raise HTTPException(422, f"limite maximo em JSON e {LIMITE_JSON}; use formato=csv para ate {LIMITE_MAXIMO}")
+    for nome, valor in textos.items():
+        if valor and len(valor) > (TAMANHO_MAX_TEXTO if nome != "variaveis" else 1000):
+            raise HTTPException(422, f"parametro '{nome}' muito longo")
 
 
 def filtros_escola(ano, uf, municipio, rede, localizacao, situacao) -> tuple[list[str], list]:
@@ -197,6 +218,8 @@ def escolas(
     formato: str = Query("json", pattern="^(json|csv)$"),
 ):
     """Listagem e metadados das escolas filtradas por UF, municipio, rede etc."""
+    checar_entrada(limite, formato, uf=uf, municipio=municipio, rede=rede,
+                   localizacao=localizacao, situacao=situacao, nome=nome)
     validar_ano(ano)
     where, params = filtros_escola(ano, uf, municipio, rede, localizacao, situacao)
     if nome:
@@ -218,6 +241,8 @@ def escolas(
 
 def agregado(categoria: str, tabela: str, ano, uf, municipio, rede, localizacao, situacao,
              variaveis, agrupar_por, somar, limite, formato):
+    checar_entrada(limite, formato, uf=uf, municipio=municipio, rede=rede, localizacao=localizacao,
+                   situacao=situacao, variaveis=variaveis, agrupar_por=agrupar_por)
     validar_ano(ano)
     dims = []
     for d in (agrupar_por or "").split(","):
@@ -238,6 +263,8 @@ def agregado(categoria: str, tabela: str, ano, uf, municipio, rede, localizacao,
     params.append(categoria)
 
     pedidas = [v.strip().upper() for v in (variaveis or VARIAVEL_PADRAO[categoria]).split(",") if v.strip()]
+    if len(pedidas) > MAX_VARIAVEIS:
+        raise HTTPException(422, f"no maximo {MAX_VARIAVEIS} variaveis por consulta")
     exatas = [v for v in pedidas if not v.endswith("*")]
     prefixos = [v[:-1] + "%" for v in pedidas if v.endswith("*")]
     where.append("(v.no_variavel = ANY(%s::text[]) OR v.no_variavel LIKE ANY(%s::text[]))")

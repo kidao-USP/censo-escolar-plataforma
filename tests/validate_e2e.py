@@ -200,6 +200,11 @@ with TestClient(app) as cl:
     assert cl.get("/api/matriculas", params={"ano": 2024, "rede": "xyz"}).status_code == 422
     assert cl.get("/api/matriculas", params={"ano": 2024, "agrupar_por": "xyz"}).status_code == 422
     assert cl.get("/api/matriculas", params={"ano": 2024, "variaveis": "NAO_EXISTE"}).json()["dados"] == []
+    # limites defensivos da API publica
+    assert cl.get("/api/escolas", params={"ano": 2024, "limite": 20000}).status_code == 422
+    assert cl.get("/api/escolas", params={"ano": 2024, "limite": 20000, "formato": "csv"}).status_code == 200
+    assert cl.get("/api/escolas", params={"ano": 2024, "municipio": "x" * 101}).status_code == 422
+    assert cl.get("/api/matriculas", params={"ano": 2024, "variaveis": ",".join(f"V{i}" for i in range(51))}).status_code == 422
     # injecao: valor malicioso e apenas dado
     assert cl.get("/api/escolas", params={"ano": 2024, "municipio": "x'; drop table escola;--"}).json()["total"] == 0
 print("API OK")

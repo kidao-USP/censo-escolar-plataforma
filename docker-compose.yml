@@ -1,52 +1,92 @@
 name: censo-escolar
 
+# Redes:
+#   edge    - internet <-> caddy <-> web
+#   backend - web, api, db (interna: sem acesso a internet)
+#   egress  - somente o ETL (precisa baixar os ZIPs do Inep)
+networks:
+  edge: {}
+  backend:
+    internal: true
+  egress: {}
+
+x-endurecimento: &endurecimento
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: ["ALL"]
+
 services:
-  db:
-    image: postgres:17
-    restart: unless-stopped
+  caddy:
+    <<: *endurecimento
+    image: caddy:2-alpine
+    # Precisa abrir 80/443 para obter e renovar o certificado (Let's Encrypt) e redirecionar HTTP->HTTPS.
+    cap_add: ["NET_BIND_SERVICE"]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-censo}
-      POSTGRES_USER: ${POSTGRES_USER:-censo_admin}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
-      API_DB_PASSWORD: ${API_DB_PASSWORD:?defina API_DB_PASSWORD no .env}
+      SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
     volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./db/init:/docker-entrypoint-initdb.d:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-censo_admin} -d ${POSTGRES_DB:-censo}"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-    # O banco NAO e exposto na rede do servidor. Para acessar de fora (DBeaver etc.)
-    # use um tunel SSH ou descomente a linha abaixo (somente localhost):
-    # ports: ["127.0.0.1:5432:5432"]
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge]
+    depends_on: [web]
+
+  web:
+    <<: *endurecimento
+    build: ./web
+    read_only: true
+    tmpfs: ["/tmp"]
+    networks: [edge, backend]
+    depends_on: [api]
 
   api:
+    <<: *endurecimento
     build: ./api
-    restart: unless-stopped
+    read_only: true
+    tmpfs: ["/tmp"]
     environment:
       DB_HOST: db
       DB_PORT: "5432"
       DB_NAME: ${POSTGRES_DB:-censo}
       DB_USER: censo_api
-      DB_PASSWORD: ${API_DB_PASSWORD}
+      DB_PASSWORD: ${API_DB_PASSWORD:?defina API_DB_PASSWORD no .env}
+    networks: [backend]
     depends_on:
       db:
         condition: service_healthy
 
-  web:
-    build: ./web
+  db:
+    image: postgres:17
     restart: unless-stopped
-    ports:
-      - "${WEB_PORT:-8080}:80"
-    depends_on:
-      - api
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-censo}
+      POSTGRES_USER: ${POSTGRES_USER:-censo_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+      API_DB_PASSWORD: ${API_DB_PASSWORD:?defina API_DB_PASSWORD no .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-censo_admin} -d ${POSTGRES_DB:-censo}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    # O banco nao e publicado em nenhuma porta. Para consultar:
+    #   docker compose exec db psql -U censo_admin censo
 
   # ETL: executado sob demanda (nao sobe com "docker compose up").
   #   docker compose run --rm etl
   etl:
     build: ./etl
     profiles: ["etl"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
     environment:
       DB_HOST: db
       DB_PORT: "5432"
@@ -57,9 +97,12 @@ services:
       CENSO_URL_TEMPLATE: ${CENSO_URL_TEMPLATE:-https://download.inep.gov.br/dados_abertos/microdados_censo_escolar_{ano}.zip}
     volumes:
       - ./data:/data
+    networks: [backend, egress]
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,26 @@
+# Terminacao TLS (HTTPS) e redirecionamento HTTP -> HTTPS automaticos.
+# Em producao SITE_ADDRESS=oipp.each.usp.br: o Caddy obtem e renova o certificado Let's Encrypt
+# (exige o DNS apontando para este servidor e as portas 80/443 acessiveis da internet).
+# Com SITE_ADDRESS=localhost usa um certificado local de teste.
+#
+# Se a USP/EACH fornecer o certificado, troque a linha "tls" abaixo (descomente) e monte os
+# arquivos em ./caddy/certs (ver README).
+{$SITE_ADDRESS} {
+	# tls /certs/fullchain.pem /certs/privkey.pem
+
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# Limita o tamanho de requisicoes (a API so recebe GET).
+	request_body {
+		max_size 10KB
+	}
+
+	reverse_proxy web:8080
+}

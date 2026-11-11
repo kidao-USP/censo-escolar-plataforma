@@ -5,7 +5,9 @@ FastAPI + frontend nginx, em `docker compose`. Ver `README.md` para modelo de da
 Responder ao usuario em portugues.
 
 ## Onde roda
-Servidor do OIPP: DNS `oipp.each.usp.br` (IP informado pelo usuario: 143.107.58.63, a confirmar).
+Servidor do OIPP: DNS `oipp.each.usp.br`. Servico PUBLICO (aberto na internet) com HTTPS via Caddy
+(`SITE_ADDRESS` no `.env`). O repositorio e PUBLICO (exigencia da banca): nunca colocar IPs internos,
+senhas, tokens ou chaves em arquivos versionados.
 O codigo foi escrito e testado fora do servidor; este e o primeiro deploy real.
 
 ## Estado atual (leia antes de agir)
@@ -24,6 +26,13 @@ NAO validado (confirmar no servidor, nesta ordem):
 5. Desempenho com o volume real (~200 mil escolas/ano): medir tempo do ETL e das consultas; criar indices
    apenas se houver necessidade comprovada.
 6. Frontend nunca foi aberto contra a API real: testar no navegador (filtros, variaveis, tabela, CSV).
+7. Endurecimento (nunca executado em Docker): conferir que o Caddy obtem o certificado e redireciona
+   HTTP->HTTPS; que `web` e `api` sobem com `read_only` + `cap_drop: ALL` (se algum falhar por escrita
+   em disco, ajustar `tmpfs`, sem remover o endurecimento); que o rate limit responde 429
+   (ex.: `for i in $(seq 40); do curl -s -o /dev/null -w "%{http_code} " https://oipp.each.usp.br/api/anos; done`);
+   que o nginx le o IP real do cliente (X-Forwarded-For); que a porta 5432 nao esta acessivel de fora;
+   `docker compose config` valida o YAML e `nginx -t` (dentro do container web) valida a configuracao.
+8. Host: firewall liberando so 22/80/443, SSH por chave, atualizacoes automaticas de seguranca.
 
 ## Regras
 - Nunca commitar `.env`, ZIPs ou qualquer coisa de `data/`. Senhas so no `.env` do servidor.
@@ -32,9 +41,12 @@ NAO validado (confirmar no servidor, nesta ordem):
   Guarde evidencias (saida do ETL com contagens, tempos, exemplos de consultas, prints do frontend).
 - Commits pequenos, em portugues; identidade git local: Rogerio M B Pascual <rmbp@usp.br>.
 
-## Decisoes em aberto (perguntar ao usuario)
-- Publicacao: porta 80/443 em `oipp.each.usp.br` (hoje `WEB_PORT`, padrao 8080, sem TLS). Definir se haverá
-  proxy/TLS da infraestrutura da EACH e se o acesso deve ser restrito a rede USP.
+## Decisoes ja tomadas pelo usuario
+- HTTPS obrigatorio. Acesso ABERTO ao publico (nao restringir a rede USP), por isso a camada de seguranca
+  descrita no README ("Seguranca"). Repositorio publico para a correcao pela banca.
+
+## Em aberto (perguntar ao usuario)
+- Se a EACH/USP ja tiver proxy/certificado proprios, adaptar o `caddy/Caddyfile` (linha `tls`).
 - Rotina de atualizacao: o ETL e manual (`docker compose run --rm etl`); automatizar so se o OIPP pedir.
 
 ## Ao terminar o deploy, registrar para o relatorio
