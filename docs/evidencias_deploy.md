@@ -1,0 +1,111 @@
+# Evidencias do primeiro deploy (11/11/2026)
+
+Servidor do OIPP (Ubuntu 24.04.5 LTS, Docker 29.9.3, Compose v5.7.0), acesso publico em
+`https://oipp.each.usp.br`. Tudo abaixo foi medido no servidor, com os microdados reais do Inep.
+
+## Carga (ETL)
+
+ZIPs baixados manualmente do site do Inep e salvos em `data/` (o download automatico falha porque
+`download.inep.gov.br` nao envia o certificado intermediario da cadeia TLS; ver "Pendencias").
+
+Comando: `docker compose run --rm -e CENSO_ANOS="2023 2024" etl`
+
+```
+[etl] 2023: usando ZIP ja existente /data/microdados_censo_escolar_2023.zip
+[etl] 2023: CSV = microdados_censo_escolar_2023/dados/microdados_ed_basica_2023.csv | dicionario = microdados_censo_escolar_2023/Anexos/ANEXO I - Dicionário de Dados/dicionário_dados_educaç╞o_básica.xlsx
+[etl] 2023: dicionario com 474 variaveis lido
+[etl] 2023: 408 colunas; matricula=78, docente=16, turma=26
+[etl] 2023: concluido em 191s (217625 escolas)
+[etl] 2024: usando ZIP ja existente /data/microdados_censo_escolar_2024.zip
+[etl] 2024: CSV = microdados_censo_escolar_2024_defeso/dados/microdados_ed_basica_2024.csv | dicionario = microdados_censo_escolar_2024_defeso/Anexos/ANEXO I - Dicionário de Dados/dicionário_dados_educação_básica.xlsx
+[etl] 2024: dicionario com 492 variaveis lido
+[etl] 2024: 426 colunas; matricula=78, docente=16, turma=26
+[etl] 2024: concluido em 244s (215545 escolas)
+[etl] ETL finalizado.
+```
+(linhas de progresso "N escolas carregadas..." omitidas)
+
+| Ano | Escolas (`/api/anos`) | Tempo de carga | Linhas `matricula` | `docente` | `turma` |
+|---|---:|---:|---:|---:|---:|
+| 2023 | 217.625 | 191 s | 4.447.155 | 1.118.508 | 1.452.896 |
+| 2024 | 215.545 | 244 s | 4.466.821 | 1.133.257 | 1.479.538 |
+
+Tempo total do comando (inclui subir o container): 7 min 26 s.
+Escolas com matricula na educacao basica > 0: 178.476 (2023) e 179.286 (2024); as demais linhas
+sao escolas paralisadas/extintas, que o arquivo do Inep tambem traz.
+
+Conferencia: soma de `QT_MAT_BAS` = 47.304.632 (2023) e 47.088.922 (2024), coerente com os
+totais de matriculas da educacao basica divulgados pelo Inep para esses anos (47,3 mi e 47,1 mi).
+As 120 variaveis carregadas (78 matricula, 16 docente, 26 turma) tem descricao vinda do dicionario.
+
+## Banco
+
+Tamanho total: **1.661 MB** (PostgreSQL 17.11).
+
+| Tabela | Linhas | Tamanho (com indices) |
+|---|---:|---:|
+| matricula | 8.912.778 | 947 MB |
+| turma | 2.932.273 | 312 MB |
+| docente | 2.251.021 | 238 MB |
+| escola_ano | 431.904 | 83 MB |
+| escola | 222.589 | 73 MB |
+| variavel | 120 | 120 kB |
+
+## Consultas de exemplo (via HTTPS publico, tempo medido no servidor com curl)
+
+1. Matriculas da rede municipal por municipio de SP, 2024 -
+   `/api/matriculas?ano=2024&agrupar_por=municipio&uf=SP&rede=municipal` (645 municipios, 0,16 s)
+
+   | Municipio | QT_MAT_BAS |
+   |---|---:|
+   | Sao Paulo | 710.175 |
+   | Guarulhos | 95.315 |
+   | Barueri | 76.589 |
+   | Sao Bernardo do Campo | 70.452 |
+   | Sao Jose dos Campos | 68.027 |
+
+2. Docentes da educacao basica por rede, 2023 - `/api/docentes?ano=2023&agrupar_por=rede` (0,38 s)
+
+   | Rede | QT_DOC_BAS |
+   |---|---:|
+   | Municipal | 1.448.837 |
+   | Estadual | 804.447 |
+   | Privada | 643.133 |
+   | Federal | 38.141 |
+
+   Observacao: `QT_DOC_*` conta docentes por escola; quem leciona em mais de uma escola e contado
+   em cada uma (nao e o numero de pessoas distintas).
+
+3. Matriculas por etapa em SP, 2023 x 2024 -
+   `/api/matriculas?variaveis=QT_MAT_INF,QT_MAT_FUND,QT_MAT_MED&agrupar_por=uf&uf=SP&ano=<ano>` (0,35 s cada)
+
+   | Variavel | 2023 | 2024 |
+   |---|---:|---:|
+   | QT_MAT_INF (infantil) | 2.309.017 | 2.289.004 |
+   | QT_MAT_FUND (fundamental) | 5.343.271 | 5.329.100 |
+   | QT_MAT_MED (medio) | 1.832.726 | 1.853.141 |
+
+Outras verificadas: `/api/turmas?ano=2024&agrupar_por=localizacao` (1.903.558 urbanas, 320.496 rurais),
+`/api/escolas?ano=2024&uf=SP&municipio=sao%20carlos&rede=municipal,estadual` (102 escolas; 100 por pagina),
+`formato=csv` (separador `;`, BOM UTF-8). Erros: ano nao carregado -> 404 com anos disponiveis;
+`agrupar_por` invalido -> 422.
+
+## HTTPS e seguranca (verificado)
+
+- Certificado Let's Encrypt para `oipp.each.usp.br` obtido automaticamente pelo Caddy (validade ate 09/02/2027); HTTP/2 e HTTP/3 anunciados.
+- `http://` -> `308 Permanent Redirect` para `https://`.
+- Cabecalhos: HSTS (1 ano), CSP restritiva, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`.
+- Rate limit: 40 requisicoes seguidas a `/api/anos` -> as primeiras ~26 com 200, depois 429;
+  exportacao CSV: 4 com 200, depois 429.
+- `POST` -> 403. Logs do nginx registram o IP real do cliente (X-Forwarded-For).
+- `api` e `web`: `read_only`, `cap_drop: ALL`, `no-new-privileges`, usuario sem privilegios; `api` sem
+  acesso a internet (rede `backend` interna). `nginx -t` ok.
+- Somente o `caddy` publica portas (80/443); 5432 nao escuta no host.
+- Banco: usuario `censo_api` sem superusuario, `default_transaction_read_only=on`, `statement_timeout=30s`,
+  limite de 20 conexoes; extensoes `unaccent` 1.1 e `pg_trgm` 1.6 instaladas.
+
+## Pendencias
+
+- Download automatico: `download.inep.gov.br` envia so o certificado final (falta o intermediario
+  "RNP ICPEdu GR46 OV TLS CA 2025"), e o ETL recusa a conexao. Por ora, ZIPs baixados manualmente.
+- Prints do frontend (abrir no navegador e testar filtros, variaveis, tabela e CSV).
