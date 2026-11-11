@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Censo Escolar – Consulta aos microdados</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Plataforma de dados abertos do Censo Escolar</h1>
+    <p>Consulta aos microdados do Inep para pesquisadores do OIPP/EACH-USP · <a href="/docs" target="_blank">documentação da API</a></p>
+  </header>
+
+  <main>
+    <form id="form" autocomplete="off">
+      <fieldset>
+        <legend>1. O que consultar</legend>
+        <label>Conjunto
+          <select id="recurso">
+            <option value="matriculas">Matrículas</option>
+            <option value="docentes">Docentes</option>
+            <option value="turmas">Turmas</option>
+            <option value="escolas">Lista de escolas</option>
+          </select>
+        </label>
+        <label>Ano do Censo <select id="ano" required></select></label>
+        <label id="lbl-agrupar">Agrupar por
+          <select id="agrupar">
+            <option value="uf">UF</option>
+            <option value="municipio">Município</option>
+            <option value="rede">Rede (dependência administrativa)</option>
+            <option value="localizacao">Localização (urbana/rural)</option>
+            <option value="escola">Escola</option>
+            <option value="total">Total geral</option>
+          </select>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>2. Filtros</legend>
+        <label>UF(s) <input id="uf" placeholder="ex.: SP,MG" maxlength="40"></label>
+        <label>Município <input id="municipio" placeholder="nome ou código IBGE"></label>
+        <label>Rede
+          <select id="rede">
+            <option value="">Todas</option>
+            <option value="federal">Federal</option>
+            <option value="estadual">Estadual</option>
+            <option value="municipal">Municipal</option>
+            <option value="privada">Privada</option>
+          </select>
+        </label>
+        <label>Localização
+          <select id="localizacao">
+            <option value="">Todas</option>
+            <option value="urbana">Urbana</option>
+            <option value="rural">Rural</option>
+          </select>
+        </label>
+        <label id="lbl-nome">Nome da escola <input id="nome" placeholder="parte do nome"></label>
+      </fieldset>
+
+      <fieldset id="fs-variaveis">
+        <legend>3. Variáveis</legend>
+        <label>Buscar variável
+          <input id="busca-var" placeholder="ex.: fundamental, feminino, creche">
+        </label>
+        <p class="dica">Sem seleção, usa o total da educação básica (QT_*_BAS). Cada variável aparece em linhas separadas, evitando contagem em duplicidade.</p>
+        <div id="lista-variaveis" class="variaveis" role="group" aria-label="Variáveis disponíveis"></div>
+      </fieldset>
+
+      <div class="acoes">
+        <button type="submit">Consultar</button>
+        <button type="button" id="baixar" disabled>Baixar CSV</button>
+        <span id="status" role="status"></span>
+      </div>
+    </form>
+
+    <section>
+      <div id="resumo"></div>
+      <div class="tabela-wrap"><table id="tabela"></table></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

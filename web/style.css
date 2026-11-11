@@ -1,0 +1,31 @@
+:root { --cor: #1a4d8f; --borda: #cfd6df; --fundo: #f5f7fa; }
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.45 system-ui, sans-serif; color: #1c2430; background: var(--fundo); }
+header { background: var(--cor); color: #fff; padding: 16px 24px; }
+header h1 { margin: 0 0 4px; font-size: 1.35rem; }
+header p { margin: 0; opacity: .9; }
+header a { color: #cfe3ff; }
+main { max-width: 1200px; margin: 0 auto; padding: 20px 24px 40px; }
+form { display: grid; gap: 14px; }
+fieldset { background: #fff; border: 1px solid var(--borda); border-radius: 8px; padding: 12px 16px 16px;
+  display: flex; flex-wrap: wrap; gap: 12px 20px; }
+legend { font-weight: 600; padding: 0 6px; color: var(--cor); }
+label { display: flex; flex-direction: column; gap: 4px; font-size: .9rem; min-width: 180px; }
+input, select { padding: 7px 9px; border: 1px solid var(--borda); border-radius: 6px; font: inherit; background: #fff; }
+.dica { flex-basis: 100%; margin: 0; color: #5b6676; font-size: .85rem; }
+.variaveis { flex-basis: 100%; max-height: 220px; overflow: auto; border: 1px solid var(--borda); border-radius: 6px;
+  padding: 6px 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2px 16px; }
+.variaveis label { flex-direction: row; align-items: flex-start; gap: 6px; min-width: 0; font-size: .85rem; }
+.variaveis code { font-weight: 600; }
+.acoes { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+button { padding: 9px 18px; border: 0; border-radius: 6px; background: var(--cor); color: #fff; font: inherit; cursor: pointer; }
+button[disabled] { opacity: .45; cursor: default; }
+#baixar { background: #3b7a3b; }
+#status { color: #5b6676; }
+#status.erro { color: #b3261e; font-weight: 600; }
+#resumo { margin: 18px 0 8px; color: #3a4556; }
+.tabela-wrap { overflow: auto; background: #fff; border: 1px solid var(--borda); border-radius: 8px; max-height: 65vh; }
+table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+th, td { padding: 6px 10px; border-bottom: 1px solid #e6ebf1; text-align: left; white-space: nowrap; }
+th { position: sticky; top: 0; background: #eef2f7; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
