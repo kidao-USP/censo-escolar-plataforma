@@ -10,30 +10,30 @@ Servidor do OIPP: DNS `oipp.each.usp.br`. Servico PUBLICO (aberto na internet) c
 senhas, tokens ou chaves em arquivos versionados.
 O codigo foi escrito e testado fora do servidor; este e o primeiro deploy real.
 
-## Estado atual (leia antes de agir)
-Validado: esquema SQL, ETL e API contra PostgreSQL 16 embutido com dados SINTETICOS
-(`tests/validate_e2e.py`) e logica do ETL (`tests/test_etl.py`).
+## Estado atual (leia antes de agir) - atualizado em 11/11/2026
+Primeiro deploy FEITO no servidor (repo em `/oipp/censo-escolar-plataforma`). Evidencias para o
+relatorio em `docs/evidencias_deploy.md`.
 
-NAO validado (confirmar no servidor, nesta ordem):
-1. `docker compose up -d --build` sobe `db`, `api`, `web` sem erro; `02_roles.sh` criou o usuario `censo_api`.
-2. Extensoes `unaccent` e `pg_trgm` existem na imagem `postgres:17` (nos testes foram substituidas por stub).
-3. Download do ZIP: a URL padrao (`CENSO_URL_TEMPLATE`) e uma suposicao. Se falhar, baixar o ZIP no site do
-   Inep e salvar em `data/microdados_censo_escolar_<ano>.zip`.
-4. Estrutura real do CSV do Inep (anos 2024 e 2025): o ETL assume uma linha por escola com colunas
-   `QT_MAT_*`, `QT_DOC_*`, `QT_TUR_*` e os atributos listados em `etl/classify.py` (`ESCOLA_COLS`).
-   O log do ETL imprime a contagem de colunas por grupo; se vier 0 ou o CSV for diferente, ajustar
-   `etl/classify.py` (nao inventar colunas) e rodar `python -I tests/test_etl.py`.
-5. Desempenho com o volume real (~200 mil escolas/ano): medir tempo do ETL e das consultas; criar indices
-   apenas se houver necessidade comprovada.
-6. Frontend nunca foi aberto contra a API real: testar no navegador (filtros, variaveis, tabela, CSV).
-7. Endurecimento (nunca executado em Docker): conferir que o Caddy obtem o certificado e redireciona
-   HTTP->HTTPS; que `web` e `api` sobem com `read_only` + `cap_drop: ALL` (se algum falhar por escrita
-   em disco, ajustar `tmpfs`, sem remover o endurecimento); que o rate limit responde 429
-   (ex.: `for i in $(seq 40); do curl -s -o /dev/null -w "%{http_code} " https://oipp.each.usp.br/api/anos; done`);
-   que o nginx le o IP real do cliente (X-Forwarded-For); que a porta 5432 nao esta acessivel de fora;
-   `docker compose config` valida o YAML e `nginx -t` (dentro do container web) valida a configuracao.
-8. Host (Docker no Ubuntu) - conferir cada item do README, secao "Endurecimento do servidor", e
-   relatar ao usuario o que esta OK e o que falta; nao alterar o host sem o usuario confirmar:
+Validado no servidor (11/11/2026):
+- Pilha sobe (`db`, `api`, `web`, `caddy`); `censo_api` criado; `unaccent` e `pg_trgm` existem no `postgres:17`.
+- Carregados 2023 e 2024 (ZIPs baixados MANUALMENTE em `data/`). Por decisao do usuario, 2025 fica de
+  fora por ora; o `.env` ainda diz `CENSO_ANOS=2024 2025` (rodar com `-e CENSO_ANOS="2023 2024"`).
+- CSV real bate com o esperado: matricula=78, docente=16, turma=26 colunas; totais `QT_MAT_BAS` coerentes
+  com o Inep. ETL ~3-4 min/ano; consultas 0,04-0,5 s (sem indices extras: nao foi preciso).
+- HTTPS (Let's Encrypt), HTTP->HTTPS 308, cabecalhos, rate limit 429, IP real nos logs, `read_only` +
+  `cap_drop` em `web`/`api`, 5432 nao publicada, `nginx -t` ok. nginx devolve 404 para caminho inexistente.
+- Host: `/etc/docker/daemon.json` aplicado (logs `local` com rotacao, `live-restore`, `no-new-privileges`).
+
+Pendente:
+1. Download automatico: `download.inep.gov.br` nao envia o certificado intermediario (RNP ICPEdu GR46 OV
+   TLS CA 2025); o ETL recusa. NUNCA desativar a verificacao TLS. Opcao proposta: incluir o intermediario
+   (com hash fixado) no bundle de CAs da imagem do ETL. Aguarda decisao do usuario.
+2. Frontend: abrir no navegador e tirar prints (o usuario faz).
+3. Host: UFW e SSH ainda pendentes (detalhes so com o usuario, NAO neste arquivo publico). Antes de
+   ativar o UFW, rodar `ss -tlnp`: ha outros servicos do OIPP no host que nao podem ser cortados.
+   Regras abaixo continuam valendo.
+4. Host (Docker no Ubuntu) - referencia, README secao "Endurecimento do servidor";
+   nao alterar o host sem o usuario confirmar:
    - Docker ignora o UFW: `docker ps --format '{{.Names}} {{.Ports}}'` so pode mostrar 80/443 (caddy);
      `sudo ss -tlnp` e `sudo ufw status verbose`; de fora, 5432 deve estar fechada.
    - A porta 22 (OpenSSH) DEVE continuar aberta (UFW: `allow OpenSSH` antes de `ufw enable`). Nunca ativar,
