@@ -11,7 +11,6 @@ import io
 import os
 import sys
 import time
-import unicodedata
 import zipfile
 from pathlib import Path
 
@@ -23,7 +22,7 @@ from classify import (
     ESCOLA_COLS, escolas_do_chunk, fatos_do_chunk, classificar_colunas,
     normalizar_colunas, validar_colunas,
 )
-from dicionario import ler_dicionario
+from dicionario import escolher_dicionario, ler_dicionario
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 URL_TEMPLATE = os.environ.get(
@@ -72,22 +71,13 @@ def obter_zip(ano: int) -> Path:
     return destino
 
 
-def _sem_acento(texto: str) -> str:
-    s = unicodedata.normalize("NFKD", texto)
-    return "".join(c for c in s if not unicodedata.combining(c)).lower()
-
-
 def localizar_arquivos(zf: zipfile.ZipFile) -> tuple[str, str | None]:
     csvs = [i for i in zf.infolist() if i.filename.lower().endswith(".csv")]
     if not csvs:
         raise SystemExit("Nenhum .csv encontrado dentro do ZIP.")
     preferidos = [i for i in csvs if "microdados_ed_basica" in i.filename.lower()]
     csv = max(preferidos or csvs, key=lambda i: i.file_size)
-    dic = next(
-        (i.filename for i in zf.infolist()
-         if i.filename.lower().endswith(".xlsx") and "dicion" in _sem_acento(i.filename)),
-        None,
-    )
+    dic = escolher_dicionario([(i.filename, i.file_size) for i in zf.infolist()])
     return csv.filename, dic
 
 

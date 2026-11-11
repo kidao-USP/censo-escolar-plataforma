@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "etl"))
 from classify import (  # noqa: E402
     classificar_colunas, escolas_do_chunk, fatos_do_chunk, normalizar_colunas, validar_colunas,
 )
-from dicionario import ler_dicionario  # noqa: E402
+from dicionario import escolher_dicionario, ler_dicionario  # noqa: E402
 
 CSV = (
     "﻿NU_ANO_CENSO;NO_ENTIDADE;CO_ENTIDADE;SG_UF;CO_MUNICIPIO;NO_MUNICIPIO;TP_DEPENDENCIA;"
@@ -79,6 +79,21 @@ def test_dicionario():
     d = ler_dicionario(buf.getvalue())
     assert d["QT_MAT_BAS"] == ("Número de matrículas da educação básica", None)
     assert d["TP_DEPENDENCIA"][1] == "1 - Federal; 2 - Estadual"
+
+
+def test_escolher_dicionario():
+    # Estrutura real do ZIP de 2024: arquivos de bloqueio "~$" ao lado do dicionario,
+    # aqui colocados ANTES do verdadeiro para garantir que nao dependemos da ordem.
+    pasta = "microdados_censo_escolar_2024_defeso/Anexos/ANEXO I - Dicionário de Dados/"
+    arquivos = [
+        (pasta, 0),
+        (pasta + "~$Dicionário de Dados da Educação Básica.xlsx", 165),
+        (pasta + "~$dicionário_dados_educação_básica.xlsx", 165),
+        (pasta + "dicionário_dados_educação_básica.xlsx", 128513),
+        ("microdados_censo_escolar_2024_defeso/dados/microdados_ed_basica_2024.csv", 10**8),
+    ]
+    assert escolher_dicionario(arquivos) == pasta + "dicionário_dados_educação_básica.xlsx"
+    assert escolher_dicionario(arquivos[:3]) is None  # so arquivos de bloqueio
 
 
 if __name__ == "__main__":

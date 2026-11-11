@@ -18,6 +18,21 @@ def _norm(texto) -> str:
     return "".join(ch for ch in s if not unicodedata.combining(ch)).strip().lower()
 
 
+def escolher_dicionario(arquivos: list[tuple[str, int]]) -> str | None:
+    """Escolhe o .xlsx do dicionario entre (caminho, tamanho) dos arquivos do ZIP.
+
+    Ignora arquivos de bloqueio do Excel (nome comecando com "~$"), que o Inep
+    as vezes deixa dentro do ZIP; havendo mais de um candidato, fica com o maior.
+    """
+    candidatos = [
+        (nome, tam) for nome, tam in arquivos
+        if nome.lower().endswith(".xlsx")
+        and not nome.rsplit("/", 1)[-1].startswith("~$")
+        and "dicion" in _norm(nome)
+    ]
+    return max(candidatos, key=lambda c: c[1])[0] if candidatos else None
+
+
 def ler_dicionario(conteudo: bytes) -> dict[str, tuple[str | None, str | None]]:
     """Retorna {NOME_VARIAVEL: (descricao, categorias)}."""
     resultado: dict[str, tuple[str | None, str | None]] = {}
