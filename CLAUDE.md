@@ -36,6 +36,9 @@ NAO validado (confirmar no servidor, nesta ordem):
    relatar ao usuario o que esta OK e o que falta; nao alterar o host sem o usuario confirmar:
    - Docker ignora o UFW: `docker ps --format '{{.Names}} {{.Ports}}'` so pode mostrar 80/443 (caddy);
      `sudo ss -tlnp` e `sudo ufw status verbose`; de fora, 5432 deve estar fechada.
+   - A porta 22 (OpenSSH) DEVE continuar aberta (UFW: `allow OpenSSH` antes de `ufw enable`). Nunca ativar,
+     recarregar ou alterar o UFW/sshd sem confirmar que a 22 esta liberada e sem o usuario ter outra sessao
+     aberta; perder o SSH significa perder o servidor.
    - `/etc/docker/daemon.json` com rotacao de logs, `live-restore` e `no-new-privileges`
      (userns-remap/rootless e opcional: testar e, se quebrar a pilha, manter o padrao).
    - Grupo `docker` so com o administrador; nenhum container monta `docker.sock`.

@@ -55,8 +55,19 @@ Configuracao do host, fora do repositorio:
 1. **Portas e firewall.** O Docker publica portas direto no iptables e **ignora o UFW**. Por isso o
    `docker-compose.yml` publica somente 80 e 443 (servico `caddy`) e o banco nao tem porta. Nao
    adicione `ports:` a outros servicos. Confira com `docker ps --format '{{.Names}} {{.Ports}}'` e,
-   de outra maquina, com `nmap <servidor>`: so devem responder 22, 80 e 443. Mantenha o UFW liberando
-   apenas essas portas para o restante do host.
+   de outra maquina, com `nmap <servidor>`: so devem responder 22, 80 e 443.
+   **A porta 22 (OpenSSH) precisa continuar aberta**, senao voce perde o acesso ao servidor. O sshd roda
+   no host (nao e container), entao quem o controla e o UFW. Libere a 22 **antes** de ativar o UFW:
+   ```bash
+   sudo ufw allow OpenSSH      # ou: sudo ufw allow 22/tcp
+   sudo ufw allow 80/tcp
+   sudo ufw allow 443/tcp
+   sudo ufw allow 443/udp      # HTTP/3 do Caddy (opcional)
+   sudo ufw enable             # so depois das regras acima
+   sudo ufw status verbose
+   ```
+   Se o servidor ficar atras de firewall da USP/EACH, peca a liberacao de 22 (restrita aos IPs de
+   administracao, se possivel), 80 e 443.
 2. **Daemon do Docker** (`/etc/docker/daemon.json`, depois `sudo systemctl restart docker`):
    ```json
    {
@@ -75,7 +86,10 @@ Configuracao do host, fora do repositorio:
 4. **Acesso ao Docker.** O grupo `docker` equivale a root: so o administrador nele
    (`getent group docker`). Nenhum container monta `/var/run/docker.sock` (o compose nao monta).
 5. **SSH.** Apenas chave: `PasswordAuthentication no` e `PermitRootLogin no` em
-   `/etc/ssh/sshd_config.d/`; considere `fail2ban`.
+   `/etc/ssh/sshd_config.d/`; considere `fail2ban`. Antes de aplicar, confirme que sua chave ja funciona
+   e valide com `sudo sshd -t`; depois de `sudo systemctl reload ssh`, teste o login numa **segunda
+   sessao** antes de fechar a atual. Nao feche a porta 22 nem troque a porta do SSH sem ter outro acesso
+   (console do provedor/VM).
 6. **Atualizacoes.** `unattended-upgrades` para o sistema operacional e, periodicamente,
    `docker compose pull && docker compose up -d --build` para atualizar as imagens base.
 
