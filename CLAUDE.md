@@ -35,9 +35,14 @@ Pendente:
    TLS CA 2025); o ETL recusa. NUNCA desativar a verificacao TLS. Opcao proposta: incluir o intermediario
    (com hash fixado) no bundle de CAs da imagem do ETL. Aguarda decisao do usuario.
 2. Frontend: abrir no navegador e tirar prints (o usuario faz).
-3. Host: UFW e SSH ainda pendentes (detalhes so com o usuario, NAO neste arquivo publico). Antes de
-   ativar o UFW, rodar `ss -tlnp`: ha outros servicos do OIPP no host que nao podem ser cortados.
-   Regras abaixo continuam valendo.
+3. Host (12/11/2026; detalhes de IPs/usuarios so com o usuario, NAO neste arquivo publico):
+   - Feito: `/etc/ssh/sshd_config.d/10-endurecimento.conf` (root so por chave, sem X11, MaxAuthTries 4);
+     usuario `oipp` fora do grupo `docker`; `/etc/docker/daemon.json` aplicado; nginx com 404 e no-cache.
+   - UFW: plano validado (22, 80/443 tcp+udp, e portas especificas do administrador; resto negado). Confirmar o
+     estado real com `ufw status verbose` e que a "rede de seguranca" (timer que desativa o UFW) foi
+     cancelada so depois dos testes de fora (SSH novo e site).
+   - PENDENTE menor: grupo `lxd` do `oipp` (sem daemon hoje; remover o usuario do grupo e/ou o pacote
+     `lxd-installer`); chaves SSH duplicada/antiga do `oipp` (usuario autoriza a remocao).
 4. Host (Docker no Ubuntu) - referencia, README secao "Endurecimento do servidor";
    nao alterar o host sem o usuario confirmar:
    - Docker ignora o UFW: `docker ps --format '{{.Names}} {{.Ports}}'` so pode mostrar 80/443 (caddy);
