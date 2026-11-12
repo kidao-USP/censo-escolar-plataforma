@@ -17,7 +17,8 @@ relatorio em `docs/evidencias_deploy.md`.
 Validado no servidor (11/11/2026):
 - Pilha sobe (`db`, `api`, `web`, `caddy`); `censo_api` criado; `unaccent` e `pg_trgm` existem no `postgres:17`.
 - Carregados 2023 e 2024 (ZIPs baixados MANUALMENTE em `data/`). Por decisao do usuario, 2025 fica de
-  fora por ora; o `.env` ainda diz `CENSO_ANOS=2024 2025` (rodar com `-e CENSO_ANOS="2023 2024"`).
+  fora por ora. O padrao no repositorio agora e `CENSO_ANOS=2023 2024`; confira o `.env` do servidor
+  (se ainda disser `2024 2025`, trocar para `2023 2024`).
 - CSV real bate com o esperado: matricula=78, docente=16, turma=26 colunas; totais `QT_MAT_BAS` coerentes
   com o Inep. ETL ~3-4 min/ano; consultas 0,04-0,5 s (sem indices extras: nao foi preciso).
 - HTTPS (Let's Encrypt), HTTP->HTTPS 308, cabecalhos, rate limit 429, IP real nos logs, `read_only` +
@@ -25,6 +26,11 @@ Validado no servidor (11/11/2026):
 - Host: `/etc/docker/daemon.json` aplicado (logs `local` com rotacao, `live-restore`, `no-new-privileges`).
 
 Pendente:
+0. Ano 2025: o ZIP do Inep nao tem `microdados_ed_basica_2025.csv`; traz `Tabela_Escola`, `Tabela_Matricula`,
+   `Tabela_Docente`, `Tabela_Turma`, `Tabela_Gestor_Escolar` e `Tabela_Curso_Tecnico`, provavelmente em nivel
+   individual. Antes de qualquer ETL: ler SO os cabecalhos (primeira linha) e contar linhas, sem imprimir
+   registros. O ETL novo deve AGREGAR por escola e nunca gravar dados individuais no banco publico (LGPD).
+   O usuario fornece o ZIP (nao esta no servidor).
 1. Download automatico: `download.inep.gov.br` nao envia o certificado intermediario (RNP ICPEdu GR46 OV
    TLS CA 2025); o ETL recusa. NUNCA desativar a verificacao TLS. Opcao proposta: incluir o intermediario
    (com hash fixado) no bundle de CAs da imagem do ETL. Aguarda decisao do usuario.

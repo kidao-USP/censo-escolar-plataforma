@@ -1,6 +1,6 @@
 """ETL: baixa o ZIP de microdados do Censo Escolar (Inep) e carrega no PostgreSQL.
 
-Uso (dentro do container):  python load.py --anos 2024 2025
+Uso (dentro do container):  python load.py --anos 2023 2024
 A carga de cada ano e idempotente: dados anteriores do mesmo ano sao substituidos,
 tudo dentro de uma unica transacao.
 """
@@ -188,7 +188,7 @@ def carregar_ano(conn: psycopg.Connection, ano: int, caminho_zip: Path, chunk: i
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--anos", nargs="+", type=int,
-                   default=[int(a) for a in os.environ.get("CENSO_ANOS", "2024 2025").split()])
+                   default=[int(a) for a in os.environ.get("CENSO_ANOS", "2023 2024").split()])
     p.add_argument("--chunk", type=int, default=20000, help="linhas por lote")
     args = p.parse_args()
 

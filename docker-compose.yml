@@ -93,7 +93,7 @@ services:
       DB_NAME: ${POSTGRES_DB:-censo}
       DB_USER: ${POSTGRES_USER:-censo_admin}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
-      CENSO_ANOS: ${CENSO_ANOS:-2024 2025}
+      CENSO_ANOS: ${CENSO_ANOS:-2023 2024}
       CENSO_URL_TEMPLATE: ${CENSO_URL_TEMPLATE:-https://download.inep.gov.br/dados_abertos/microdados_censo_escolar_{ano}.zip}
     volumes:
       - ./data:/data

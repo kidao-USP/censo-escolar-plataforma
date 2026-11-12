@@ -13,7 +13,7 @@ Inep (ZIP/CSV) --> etl (Python) --> db (PostgreSQL) --> api (FastAPI) --> web (n
 ```bash
 cp .env.example .env        # gere senhas fortes (openssl rand -hex 24) e confira SITE_ADDRESS
 docker compose up -d --build
-docker compose run --rm etl # baixa e carrega os anos de CENSO_ANOS (padrao: 2024 2025)
+docker compose run --rm etl # baixa e carrega os anos de CENSO_ANOS (padrao: 2023 2024)
 ```
 
 Depois acesse `https://oipp.each.usp.br` (frontend) e `https://oipp.each.usp.br/docs` (Swagger da API).
@@ -121,13 +121,30 @@ entram sem alterar o esquema. A API usa um usuario PostgreSQL somente leitura (`
 Exemplos:
 
 ```
-/api/matriculas?ano=2025&agrupar_por=municipio&uf=SP&rede=municipal
-/api/matriculas?ano=2025&variaveis=QT_MAT_FUND*&agrupar_por=uf
-/api/escolas?ano=2025&municipio=sao carlos&rede=municipal,estadual
+/api/matriculas?ano=2024&agrupar_por=municipio&uf=SP&rede=municipal
+/api/matriculas?ano=2024&variaveis=QT_MAT_FUND*&agrupar_por=uf
+/api/escolas?ano=2024&municipio=sao carlos&rede=municipal,estadual
 ```
 
 Observacao: sem `variaveis`, usa-se o total da educacao basica (`QT_*_BAS`). Variaveis
 sobrepostas (total e recortes do mesmo total) nao devem ser somadas (`somar=true`).
+
+## Anos e limitacoes
+
+* **Anos carregados:** 2023 (217.625 escolas) e 2024 (215.545 escolas). Os totais de matriculas da
+  educacao basica (`QT_MAT_BAS`) conferem com os divulgados pelo Inep. Resultados da carga em
+  `docs/evidencias_deploy.md`.
+* **Dados agregados por escola:** o CSV do Inep (2023 e 2024) traz uma linha por escola com contagens
+  (`QT_MAT_*`, `QT_DOC_*`, `QT_TUR_*`). Por isso `/api/matriculas`, `/api/docentes` e `/api/turmas`
+  devolvem **contagens agregadas**; a plataforma nao guarda nem expoe registros individuais de
+  alunos ou docentes.
+* **2025 ainda nao esta carregado.** O pacote de microdados de 2025 deixou de trazer o CSV unico por
+  escola e passou a trazer tabelas separadas (escola, matricula, docente, turma, gestor), possivelmente em
+  nivel individual. Incluir esse ano exige um ETL proprio que agregue por escola antes de gravar,
+  para manter o banco publico sem dados pessoais.
+* **Download dos ZIPs:** o servidor do Inep nao envia o certificado intermediario e o download automatico
+  do ETL e recusado (a verificacao TLS nao e desativada). Baixe o ZIP no navegador, no site do Inep, e salve
+  em `data/microdados_censo_escolar_<ano>.zip`.
 
 ## Testes
 
