@@ -166,7 +166,8 @@ Feito item a item, com confirmacao do responsavel, segunda sessao SSH aberta e p
 - **Validacao apos ativar o UFW**: site 200, `http://` -> 308, `/api/health` 200, `/api/anos` com 2023
   e 2024, `/api/municipios` 200, HTTP/3 anunciado; os 4 containers no ar; o `caddy` continua saindo para
   a internet (`wget --spider` no diretorio ACME do Let's Encrypt: ok); logs do `caddy` sem erros.
-  De fora: SSH novo, site e API funcionando.
+  De fora: SSH novo, site e API funcionando. O temporizador de seguranca foi cancelado depois dos testes
+  e o UFW segue ativo.
 - Ja feito em 11/11: `/etc/docker/daemon.json` com logs `local` rotacionados, `live-restore` e
   `no-new-privileges`.
 
@@ -174,4 +175,3 @@ Feito item a item, com confirmacao do responsavel, segunda sessao SSH aberta e p
 
 - Download automatico: `download.inep.gov.br` envia so o certificado final (falta o intermediario
   "RNP ICPEdu GR46 OV TLS CA 2025"), e o ETL recusa a conexao. Por ora, ZIPs baixados manualmente.
-- Prints do frontend (abrir no navegador e testar filtros, variaveis, tabela e CSV).
