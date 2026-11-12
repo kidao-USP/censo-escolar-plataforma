@@ -128,9 +128,11 @@ Exemplos:
 ```
 
 Filtro `municipio`: aceita o codigo IBGE ou o nome. O **nome exato** (sem acento e sem diferenciar
-maiusculas) tem prioridade: `municipio=sao carlos` devolve so Sao Carlos (SP), nao Sao Carlos do Ivai (PR).
+maiusculas) tem prioridade: `municipio=sao carlos` devolve os municipios chamados exatamente "Sao Carlos"
+(ha um em SP e outro em SC), mas nao Sao Carlos do Ivai (PR).
 Se nao existir municipio com esse nome (na UF filtrada, se houver), busca por parte do nome
-(`municipio=carlos`). Para nomes que se repetem entre estados, informe tambem `uf` ou use o codigo IBGE.
+(`municipio=carlos`). **Nomes se repetem entre estados**: para um unico municipio, informe tambem `uf`
+(`municipio=sao carlos&uf=SP`) ou use o codigo IBGE (`municipio=3548906`).
 No frontend, o campo Municipio mostra uma lista de sugestoes (de `/api/municipios`) enquanto voce digita;
 ao escolher um item, a consulta usa o codigo IBGE dele. Se voce editar o texto depois, vale o que digitou.
 
