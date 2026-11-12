@@ -90,6 +90,40 @@ Outras verificadas: `/api/turmas?ano=2024&agrupar_por=localizacao` (1.903.558 ur
 `formato=csv` (separador `;`, BOM UTF-8). Erros: ano nao carregado -> 404 com anos disponiveis;
 `agrupar_por` invalido -> 422.
 
+## Filtro de municipio e lista `/api/municipios` (12/11/2026)
+
+Atualizacao aplicada (commits 35a839b e 60cf065): `docker compose up -d --build api web`, sem reiniciar
+`db` nem `caddy`; os quatro servicos no ar e logs sem erros.
+
+O filtro `municipio` por nome agora casa o nome exato primeiro: "sao carlos" nao traz mais
+"Sao Carlos do Ivai" (PR). Mas **existem dois municipios chamados exatamente "Sao Carlos"**: em SP
+(codigo 3548906) e em SC (codigo 4216008). Por isso o nome sozinho soma os dois; para um so municipio
+use `uf` ou o codigo IBGE. O frontend envia o codigo quando o usuario escolhe uma sugestao da lista.
+
+| Consulta (`/api/escolas?ano=2024&rede=municipal&limite=1&...`) | `total` |
+|---|---:|
+| `municipio=sao carlos` (sem UF: SP + SC) | 73 |
+| `municipio=sao carlos&uf=SP` | 63 |
+| `municipio=sao carlos&uf=SC` | 10 |
+| `municipio=3548906` (codigo, como o frontend envia) | 63 |
+
+Antes da correcao, `municipio=sao carlos` dava 76 (os 73 + 3 escolas de Sao Carlos do Ivai/PR).
+
+`/api/municipios?busca=sao%20carlos&ano=2024` -> 200, nesta ordem: Sao Carlos (SC), Sao Carlos (SP),
+Sao Carlos do Ivai (PR). Os homonimos exatos vem antes, em ordem de UF.
+
+Outras verificacoes: `/api/health` -> 200; `/` -> 200; `/nao-existe` -> 404.
+
+Tempo de `/api/municipios?ano=2024` (5 execucoes de `curl -w '%{time_total}'` via HTTPS, sem indice novo):
+
+| `busca` | itens | tempos (s) |
+|---|---:|---|
+| `sao` | 20 | 0,121 0,120 0,121 0,120 0,120 |
+| `carlos` | 8 | 0,122 0,122 0,121 0,121 0,122 |
+| `a` | - | 0,033 0,034 0,033 0,033 0,033 (422: `busca` exige ao menos 2 caracteres; nao consulta o banco) |
+
+Todos abaixo de 0,5 s; nao foi preciso criar indice nem tabela de municipios.
+
 ## HTTPS e seguranca (verificado)
 
 - Certificado Let's Encrypt para `oipp.each.usp.br` obtido automaticamente pelo Caddy (validade ate 09/02/2027); HTTP/2 e HTTP/3 anunciados.
