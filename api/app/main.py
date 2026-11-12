@@ -111,19 +111,44 @@ def checar_entrada(limite: int, formato: str, **textos: Optional[str]) -> None:
             raise HTTPException(422, f"parametro '{nome}' muito longo")
 
 
+def escapar_like(texto: str) -> str:
+    """Escapa curingas do LIKE: '%' e '_' digitados pelo usuario valem como texto comum."""
+    return texto.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def existe_municipio_exato(ano: int, ufs: list[str], nome: str) -> bool:
+    """Ha municipio com exatamente este nome (sem acento, sem diferenciar maiusculas)?
+
+    Considera o ano e, se informadas, as UFs do filtro."""
+    sql = ("SELECT 1 FROM escola_ano e WHERE e.nu_ano_censo = %s "
+           "AND lower(unaccent(e.no_municipio)) = lower(unaccent(%s))")
+    params: list = [ano, nome]
+    if ufs:
+        sql += " AND e.sg_uf = ANY(%s::text[])"
+        params.append(ufs)
+    return bool(consultar(sql + " LIMIT 1", params))
+
+
 def filtros_escola(ano, uf, municipio, rede, localizacao, situacao) -> tuple[list[str], list]:
     where, params = ["e.nu_ano_censo = %s"], [ano]
+    ufs: list[str] = []
     if uf:
         ufs = [u.strip().upper() for u in uf.split(",") if u.strip()]
         where.append("e.sg_uf = ANY(%s::text[])")
         params.append(ufs)
-    if municipio:
+    if municipio and municipio.strip():
+        municipio = municipio.strip()
         if municipio.isdigit():
             where.append("e.co_municipio = %s")
             params.append(int(municipio))
+        elif existe_municipio_exato(ano, ufs, municipio):
+            # "Sao Carlos" nao deve trazer "Sao Carlos do Ivai": nome exato tem prioridade
+            where.append("lower(unaccent(e.no_municipio)) = lower(unaccent(%s))")
+            params.append(municipio)
         else:
+            # sem nome exato, busca por parte do nome
             where.append("unaccent(e.no_municipio) ILIKE unaccent(%s)")
-            params.append(f"%{municipio}%")
+            params.append(f"%{escapar_like(municipio)}%")
     for coluna, valor, alias, campo in (
         ("e.tp_dependencia", rede, ALIAS_REDE, "rede"),
         ("e.tp_localizacao", localizacao, ALIAS_LOCALIZACAO, "localizacao"),
@@ -208,7 +233,8 @@ def metadados_dominios():
 def escolas(
     ano: int = Query(..., description="Ano do Censo Escolar"),
     uf: Optional[str] = Query(None, description="Sigla(s) separadas por virgula, ex.: SP,MG"),
-    municipio: Optional[str] = Query(None, description="Codigo IBGE ou parte do nome"),
+    municipio: Optional[str] = Query(None, description="Codigo IBGE ou nome. Nome exato (sem acento, sem diferenciar maiusculas) tem prioridade; "
+                                                           "se nao existir, busca por parte do nome"),
     rede: Optional[str] = Query(None, description="federal, estadual, municipal, privada (ou codigos 1-4)"),
     localizacao: Optional[str] = Query(None, description="urbana, rural (ou 1-2)"),
     situacao: Optional[str] = Query(None, description="codigos de TP_SITUACAO_FUNCIONAMENTO"),

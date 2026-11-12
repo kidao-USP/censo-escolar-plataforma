@@ -126,6 +126,11 @@ Exemplos:
 /api/escolas?ano=2024&municipio=sao carlos&rede=municipal,estadual
 ```
 
+Filtro `municipio`: aceita o codigo IBGE ou o nome. O **nome exato** (sem acento e sem diferenciar
+maiusculas) tem prioridade: `municipio=sao carlos` devolve so Sao Carlos (SP), nao Sao Carlos do Ivai (PR).
+Se nao existir municipio com esse nome (na UF filtrada, se houver), busca por parte do nome
+(`municipio=carlos`). Para nomes que se repetem entre estados, informe tambem `uf` ou use o codigo IBGE.
+
 Observacao: sem `variaveis`, usa-se o total da educacao basica (`QT_*_BAS`). Variaveis
 sobrepostas (total e recortes do mesmo total) nao devem ser somadas (`somar=true`).
 

@@ -139,6 +139,13 @@ def esperado_total(df, col, **filtros):
         d = d[d[k].isin(v if isinstance(v, list) else [v])]
     return pd.to_numeric(d[col]).fillna(0)
 
+# Municipio cujo nome contem outro ("Sao Carlos do Ivai", PR, contem "Sao Carlos", SP), so em 2024
+with psycopg.connect(cdsn, autocommit=True) as c:
+    c.execute("INSERT INTO escola VALUES (41000001, 'ESCOLA IVAI', 2024)")
+    c.execute("INSERT INTO escola_ano (nu_ano_censo, co_entidade, no_entidade, sg_uf, no_uf, co_municipio, "
+              "no_municipio, tp_dependencia, tp_localizacao, tp_situacao_funcionamento) "
+              "VALUES (2024, 41000001, 'ESCOLA IVAI', 'PR', 'Paraná', 4124608, 'São Carlos do Ivaí', 3, 1, 1)")
+
 with TestClient(app) as cl:
     assert cl.get("/api/health").json() == {"status": "ok"}
     anos = cl.get("/api/anos").json(); assert [a["ano"] for a in anos] == [2025, 2024]
@@ -205,6 +212,20 @@ with TestClient(app) as cl:
     assert cl.get("/api/escolas", params={"ano": 2024, "limite": 20000, "formato": "csv"}).status_code == 200
     assert cl.get("/api/escolas", params={"ano": 2024, "municipio": "x" * 101}).status_code == 422
     assert cl.get("/api/matriculas", params={"ano": 2024, "variaveis": ",".join(f"V{i}" for i in range(51))}).status_code == 422
+    # municipio: nome exato tem prioridade; sem nome exato, busca por parte do nome
+    n_sc = int((dfs[2024].CO_MUNICIPIO == 3548906).sum())
+    def munic(**p):
+        r = cl.get("/api/escolas", params={"ano": 2024, "limite": 1000, **p}).json()
+        return r["total"], {x["co_municipio"] for x in r["dados"]}
+    assert munic(municipio="sao carlos") == (n_sc, {3548906})        # nao traz Sao Carlos do Ivai
+    assert munic(municipio="  SÃO CARLOS ") == (n_sc, {3548906})     # sem acento/caixa/espacos
+    assert munic(municipio="sao carlos", uf="PR") == (1, {4124608})  # sem exato em PR: busca por parte
+    assert munic(municipio="carlos") == (n_sc + 1, {3548906, 4124608})
+    assert munic(municipio="ivai") == (1, {4124608})
+    assert munic(municipio="3548906") == (n_sc, {3548906})           # codigo IBGE
+    assert munic(municipio="%")[0] == 0 and munic(municipio="_")[0] == 0   # curingas do LIKE valem como texto
+    r = cl.get("/api/matriculas", params={"ano": 2024, "municipio": "sao carlos", "agrupar_por": "municipio"}).json()
+    assert {x["co_municipio"] for x in r["dados"]} <= {3548906}
     # injecao: valor malicioso e apenas dado
     assert cl.get("/api/escolas", params={"ano": 2024, "municipio": "x'; drop table escola;--"}).json()["total"] == 0
 print("API OK")
