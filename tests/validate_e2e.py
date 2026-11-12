@@ -226,6 +226,22 @@ with TestClient(app) as cl:
     assert munic(municipio="%")[0] == 0 and munic(municipio="_")[0] == 0   # curingas do LIKE valem como texto
     r = cl.get("/api/matriculas", params={"ano": 2024, "municipio": "sao carlos", "agrupar_por": "municipio"}).json()
     assert {x["co_municipio"] for x in r["dados"]} <= {3548906}
+    # lista de municipios (para escolher o codigo IBGE)
+    def lista(**p):
+        r = cl.get("/api/municipios", params=p)
+        assert r.status_code == 200, (p, r.status_code, r.text)
+        return [(x["co_municipio"], x["sg_uf"]) for x in r.json()]
+    assert lista(busca="sao carlos", ano=2024) == [(3548906, "SP"), (4124608, "PR")]  # exato primeiro
+    assert lista(busca="SÃO CARLOS") == [(3548906, "SP")]            # ano padrao = mais recente (2025)
+    assert lista(busca="carlos", ano=2024, uf="PR") == [(4124608, "PR")]
+    assert lista(busca="pocos") == [(3151800, "MG")]                  # sem acento acha "Poços de Caldas"
+    assert lista(busca="%%") == [] and lista(busca="__") == []        # curingas valem como texto
+    r = cl.get("/api/municipios", params={"busca": "sao carlos", "ano": 2024}).json()
+    assert r[0]["rotulo"] == "São Carlos (SP)", r
+    assert cl.get("/api/municipios", params={"busca": "s"}).status_code == 422      # minimo 2 caracteres
+    assert cl.get("/api/municipios", params={"busca": "x" * 101}).status_code == 422
+    assert cl.get("/api/municipios", params={"busca": "sao", "ano": 2020}).status_code == 404
+    assert len(cl.get("/api/municipios", params={"busca": "sa", "ano": 2024, "limite": 2}).json()) <= 2
     # injecao: valor malicioso e apenas dado
     assert cl.get("/api/escolas", params={"ano": 2024, "municipio": "x'; drop table escola;--"}).json()["total"] == 0
 print("API OK")

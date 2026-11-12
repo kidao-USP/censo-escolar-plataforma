@@ -60,10 +60,88 @@ async function carregarVariaveis() {
   if (!vars.length) box.textContent = "Nenhuma variável encontrada.";
 }
 
+// ---- Municipio: lista de sugestoes (envia o codigo IBGE do escolhido)
+const SUG = { timer: null, seq: 0 };
+
+function esconderSugestoes() {
+  const ul = $("sugestoes-municipio");
+  ul.hidden = true;
+  ul.replaceChildren();
+  $("municipio").setAttribute("aria-expanded", "false");
+}
+
+function escolherMunicipio(m) {
+  const campo = $("municipio");
+  campo.value = m.rotulo;
+  campo.dataset.codigo = m.co_municipio;
+  esconderSugestoes();
+  campo.focus();
+}
+
+async function buscarMunicipios() {
+  const texto = $("municipio").value.trim();
+  const seq = ++SUG.seq;
+  if (texto.length < 2 || /^\d+$/.test(texto)) { esconderSugestoes(); return; }
+  try {
+    const lista = await (await api("/api/municipios",
+      { busca: texto, uf: $("uf").value.trim(), ano: $("ano").value })).json();
+    if (seq !== SUG.seq) return; // resposta antiga: o usuario ja digitou outra coisa
+    const ul = $("sugestoes-municipio");
+    ul.replaceChildren();
+    for (const m of lista) {
+      const li = document.createElement("li");
+      const b = document.createElement("button");
+      b.type = "button";
+      b.setAttribute("role", "option");
+      b.textContent = `${m.rotulo} · IBGE ${m.co_municipio}`;
+      b.addEventListener("click", () => escolherMunicipio(m));
+      li.appendChild(b);
+      ul.appendChild(li);
+    }
+    if (!lista.length) {
+      const li = document.createElement("li");
+      li.className = "vazio";
+      li.textContent = "Nenhum município encontrado.";
+      ul.appendChild(li);
+    }
+    ul.hidden = false;
+    $("municipio").setAttribute("aria-expanded", "true");
+  } catch (_) {
+    esconderSugestoes(); // a consulta continua valendo com o texto digitado
+  }
+}
+
+$("municipio").addEventListener("input", () => {
+  delete $("municipio").dataset.codigo; // editou o texto: deixa de valer o codigo escolhido
+  clearTimeout(SUG.timer);
+  SUG.timer = setTimeout(buscarMunicipios, 250);
+});
+$("municipio").addEventListener("keydown", (ev) => {
+  const ul = $("sugestoes-municipio");
+  if (ev.key === "Escape") esconderSugestoes();
+  else if (ev.key === "ArrowDown" && !ul.hidden) {
+    ev.preventDefault();
+    const primeiro = ul.querySelector("button");
+    if (primeiro) primeiro.focus();
+  }
+});
+$("sugestoes-municipio").addEventListener("keydown", (ev) => {
+  const botoes = [...$("sugestoes-municipio").querySelectorAll("button")];
+  const i = botoes.indexOf(document.activeElement);
+  if (ev.key === "ArrowDown") { ev.preventDefault(); if (botoes[i + 1]) botoes[i + 1].focus(); }
+  else if (ev.key === "ArrowUp") { ev.preventDefault(); (botoes[i - 1] || $("municipio")).focus(); }
+  else if (ev.key === "Escape") { esconderSugestoes(); $("municipio").focus(); }
+});
+document.addEventListener("click", (ev) => {
+  if (!ev.target.closest(".campo-sugestoes")) esconderSugestoes();
+});
+
 function parametros() {
   const recurso = $("recurso").value;
+  const campoMun = $("municipio");
   const p = {
-    ano: $("ano").value, uf: $("uf").value.trim(), municipio: $("municipio").value.trim(),
+    ano: $("ano").value, uf: $("uf").value.trim(),
+    municipio: campoMun.dataset.codigo || campoMun.value.trim(),
     rede: $("rede").value, localizacao: $("localizacao").value,
   };
   if (recurso in CATEGORIA) {

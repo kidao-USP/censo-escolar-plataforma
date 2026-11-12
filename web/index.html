@@ -40,7 +40,13 @@
       <fieldset>
         <legend>2. Filtros</legend>
         <label>UF(s) <input id="uf" placeholder="ex.: SP,MG" maxlength="40"></label>
-        <label>Município <input id="municipio" placeholder="nome ou código IBGE"></label>
+        <div class="campo-sugestoes">
+          <label>Município
+            <input id="municipio" placeholder="digite e escolha na lista" role="combobox"
+                   aria-autocomplete="list" aria-controls="sugestoes-municipio" aria-expanded="false">
+          </label>
+          <ul id="sugestoes-municipio" class="sugestoes" role="listbox" aria-label="Municípios encontrados" hidden></ul>
+        </div>
         <label>Rede
           <select id="rede">
             <option value="">Todas</option>

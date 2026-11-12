@@ -229,6 +229,47 @@ def metadados_dominios():
             for campo, mapa in ROTULOS.items()}
 
 
+@app.get("/api/municipios", tags=["metadados"])
+def municipios(
+    busca: str = Query(..., min_length=2, max_length=TAMANHO_MAX_TEXTO,
+                       description="Parte do nome do municipio (sem acento, sem diferenciar maiusculas)"),
+    uf: Optional[str] = Query(None, description="Sigla(s) separadas por virgula, ex.: SP,MG"),
+    ano: Optional[int] = Query(None, description="Ano do Censo (padrao: o mais recente carregado)"),
+    limite: int = Query(20, ge=1, le=50),
+):
+    """Municipios que combinam com o texto, com codigo IBGE e UF.
+
+    Serve para escolher o municipio certo: use o `co_municipio` no filtro `municipio` das consultas.
+    O nome exato vem primeiro, depois os que comecam com o texto, depois os demais."""
+    checar_entrada(limite, "json", uf=uf)
+    if ano is None:
+        ano = consultar("SELECT max(nu_ano_censo) AS ano FROM ano_censo", [])[0]["ano"]
+        if ano is None:
+            raise HTTPException(404, "Nenhum ano carregado na base")
+    else:
+        validar_ano(ano)
+    termo = busca.strip()
+    if len(termo) < 2:
+        raise HTTPException(422, "Informe ao menos 2 caracteres")
+    where = ["e.nu_ano_censo = %s", "unaccent(e.no_municipio) ILIKE unaccent(%s)"]
+    params: list = [ano, f"%{escapar_like(termo)}%"]
+    if uf:
+        where.append("e.sg_uf = ANY(%s::text[])")
+        params.append([u.strip().upper() for u in uf.split(",") if u.strip()])
+    linhas = consultar(
+        f"""SELECT e.co_municipio, e.no_municipio, e.sg_uf
+            FROM escola_ano e WHERE {' AND '.join(where)}
+            GROUP BY e.co_municipio, e.no_municipio, e.sg_uf
+            ORDER BY (lower(unaccent(e.no_municipio)) = lower(unaccent(%s))) DESC,
+                     (unaccent(e.no_municipio) ILIKE unaccent(%s)) DESC,
+                     e.no_municipio, e.sg_uf
+            LIMIT %s""",
+        params + [termo, f"{escapar_like(termo)}%", limite])
+    for linha in linhas:
+        linha["rotulo"] = f"{linha['no_municipio']} ({linha['sg_uf']})"
+    return linhas
+
+
 @app.get("/api/escolas", tags=["consultas"])
 def escolas(
     ano: int = Query(..., description="Ano do Censo Escolar"),

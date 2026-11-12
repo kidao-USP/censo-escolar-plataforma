@@ -115,6 +115,7 @@ entram sem alterar o esquema. A API usa um usuario PostgreSQL somente leitura (`
 | `GET /api/matriculas` | agrega `QT_MAT_*` (`variaveis`, `agrupar_por`, filtros) |
 | `GET /api/docentes` | agrega `QT_DOC_*` |
 | `GET /api/turmas` | agrega `QT_TUR_*` |
+| `GET /api/municipios` | lista municipios por parte do nome (`busca`, `uf`, `ano`): codigo IBGE, nome e UF; o nome exato vem primeiro |
 | `GET /api/anos`, `/api/metadados/variaveis`, `/api/metadados/dominios` | metadados |
 
 `formato=csv` em qualquer consulta devolve CSV (separador `;`, UTF-8 com BOM, abre no Excel).
@@ -130,6 +131,8 @@ Filtro `municipio`: aceita o codigo IBGE ou o nome. O **nome exato** (sem acento
 maiusculas) tem prioridade: `municipio=sao carlos` devolve so Sao Carlos (SP), nao Sao Carlos do Ivai (PR).
 Se nao existir municipio com esse nome (na UF filtrada, se houver), busca por parte do nome
 (`municipio=carlos`). Para nomes que se repetem entre estados, informe tambem `uf` ou use o codigo IBGE.
+No frontend, o campo Municipio mostra uma lista de sugestoes (de `/api/municipios`) enquanto voce digita;
+ao escolher um item, a consulta usa o codigo IBGE dele. Se voce editar o texto depois, vale o que digitou.
 
 Observacao: sem `variaveis`, usa-se o total da educacao basica (`QT_*_BAS`). Variaveis
 sobrepostas (total e recortes do mesmo total) nao devem ser somadas (`somar=true`).
