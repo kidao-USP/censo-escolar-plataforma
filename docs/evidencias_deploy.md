@@ -151,6 +151,10 @@ Feito item a item, com confirmacao do responsavel, segunda sessao SSH aberta e p
   repositorio). Testado login novo por chave e por senha. `fail2ban` ativo na jail `sshd`.
 - **Grupo `docker`**: so `root` (o usuario administrativo saiu do grupo; usa `sudo`). Nenhum container
   monta `docker.sock`. Pilha e site seguiram respondendo.
+- **LXD**: nao instalado (so o pacote `lxd-installer`, que instala o snap sob demanda). O usuario
+  administrativo saiu do grupo `lxd` (grupo vazio) e o `lxd-installer.socket` foi mascarado, para que
+  ninguem sem root dispare a instalacao. O pacote foi mantido porque remove-lo removeria tambem o
+  metapacote `ubuntu-server`.
 - **UFW** ativo (v4 e v6): `deny` entrada, `allow` saida, `deny` roteado. Liberadas apenas
   22/tcp (SSH), 80/tcp e 443/tcp+udp (Caddy) e portas de servicos que ja estavam no host (nao listadas
   aqui). Removida uma regra antiga sem uso. Antes de ativar:
