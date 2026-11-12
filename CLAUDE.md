@@ -10,7 +10,7 @@ Servidor do OIPP: DNS `oipp.each.usp.br`. Servico PUBLICO (aberto na internet) c
 senhas, tokens ou chaves em arquivos versionados.
 O codigo foi escrito e testado fora do servidor; este e o primeiro deploy real.
 
-## Estado atual (leia antes de agir) - atualizado em 11/11/2026
+## Estado atual (leia antes de agir) - atualizado em 12/11/2026
 Primeiro deploy FEITO no servidor (repo em `/oipp/censo-escolar-plataforma`). Evidencias para o
 relatorio em `docs/evidencias_deploy.md`.
 
@@ -36,13 +36,12 @@ Pendente:
    (com hash fixado) no bundle de CAs da imagem do ETL. Aguarda decisao do usuario.
 2. Frontend: abrir no navegador e tirar prints (o usuario faz).
 3. Host (12/11/2026; detalhes de IPs/usuarios so com o usuario, NAO neste arquivo publico):
-   - Feito: `/etc/ssh/sshd_config.d/10-endurecimento.conf` (root so por chave, sem X11, MaxAuthTries 4);
-     usuario `oipp` fora do grupo `docker`; `/etc/docker/daemon.json` aplicado; nginx com 404 e no-cache.
-   - UFW: plano validado (22, 80/443 tcp+udp, e portas especificas do administrador; resto negado). Confirmar o
-     estado real com `ufw status verbose` e que a "rede de seguranca" (timer que desativa o UFW) foi
-     cancelada so depois dos testes de fora (SSH novo e site).
-   - PENDENTE menor: grupo `lxd` do `oipp` (sem daemon hoje; remover o usuario do grupo e/ou o pacote
-     `lxd-installer`); chaves SSH duplicada/antiga do `oipp` (usuario autoriza a remocao).
+   - Feito: `/etc/ssh/sshd_config.d/10-endurecimento.conf` (root so por chave, sem X11, MaxAuthTries 4,
+     LoginGraceTime 30); chaves SSH do `oipp` revisadas (duplicada e antiga removidas); `oipp` fora dos
+     grupos `docker` e `lxd`; `lxd-installer.socket` mascarado (pacote mantido: remove-lo removeria o
+     `ubuntu-server`); `/etc/docker/daemon.json` aplicado; nginx com 404 e no-cache.
+   - UFW ATIVO e testado de fora (12/11): 22, 80/443 tcp+udp e portas especificas do administrador; resto negado.
+     Rede de seguranca cancelada apos os testes. Evidencias em `docs/evidencias_deploy.md`.
 4. Host (Docker no Ubuntu) - referencia, README secao "Endurecimento do servidor";
    nao alterar o host sem o usuario confirmar:
    - Docker ignora o UFW: `docker ps --format '{{.Names}} {{.Ports}}'` so pode mostrar 80/443 (caddy);
@@ -53,7 +52,7 @@ Pendente:
    - `/etc/docker/daemon.json` com rotacao de logs, `live-restore` e `no-new-privileges`
      (userns-remap/rootless e opcional: testar e, se quebrar a pilha, manter o padrao).
    - Grupo `docker` so com o administrador; nenhum container monta `docker.sock`.
-   - SSH: `PermitRootLogin no` e `X11Forwarding no`; `unattended-upgrades` e `fail2ban` ativos.
+   - SSH: `PermitRootLogin prohibit-password` (root so por chave, decisao do usuario) e `X11Forwarding no`; `unattended-upgrades` e `fail2ban` ativos.
      DECISAO DO USUARIO: o login por SENHA no SSH continua ligado (desativar depende de autorizacao da
      instituicao). NAO mudar `PasswordAuthentication` nem exigir chave sem pedido expresso dele.
    Decisao do usuario: ficar com Docker Compose (k3s/Podman nao trazem ganho de seguranca por si so).
