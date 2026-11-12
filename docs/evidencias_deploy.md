@@ -138,6 +138,34 @@ Todos abaixo de 0,5 s; nao foi preciso criar indice nem tabela de municipios.
 - Banco: usuario `censo_api` sem superusuario, `default_transaction_read_only=on`, `statement_timeout=30s`,
   limite de 20 conexoes; extensoes `unaccent` 1.1 e `pg_trgm` 1.6 instaladas.
 
+## Endurecimento do host (12/11/2026)
+
+Feito item a item, com confirmacao do responsavel, segunda sessao SSH aberta e porta 22 sempre liberada.
+
+- **nginx**: frontend com `Cache-Control: no-cache` (verificado com `curl -sI`).
+- **SSH** (`/etc/ssh/sshd_config.d/10-endurecimento.conf`, validado com `sshd -t` e `sshd -T`, aplicado
+  com `systemctl reload ssh`): `PermitRootLogin prohibit-password` (root so por chave),
+  `X11Forwarding no`, `MaxAuthTries 4`, `LoginGraceTime 30`. Porta 22 mantida. O login por senha
+  continua ligado por decisao do responsavel (desliga-lo depende de autorizacao da instituicao).
+  Chaves autorizadas revisadas: removidas uma chave repetida e uma chave sem uso (com backup fora do
+  repositorio). Testado login novo por chave e por senha. `fail2ban` ativo na jail `sshd`.
+- **Grupo `docker`**: so `root` (o usuario administrativo saiu do grupo; usa `sudo`). Nenhum container
+  monta `docker.sock`. Pilha e site seguiram respondendo.
+- **UFW** ativo (v4 e v6): `deny` entrada, `allow` saida, `deny` roteado. Liberadas apenas
+  22/tcp (SSH), 80/tcp e 443/tcp+udp (Caddy) e portas de servicos que ja estavam no host (nao listadas
+  aqui). Removida uma regra antiga sem uso. Antes de ativar:
+  levantamento com `ss -tlnp` (servicos locais so no loopback), conferencia de que os
+  containers nao falam com portas do host, e uma "rede de seguranca" (`systemd-run` com `ufw disable`
+  em 20 min), cancelada so depois dos testes externos.
+  Observacao: portas publicadas pelo Docker passam pela cadeia FORWARD, nao pelo UFW; por isso so o
+  `caddy` publica portas.
+- **Validacao apos ativar o UFW**: site 200, `http://` -> 308, `/api/health` 200, `/api/anos` com 2023
+  e 2024, `/api/municipios` 200, HTTP/3 anunciado; os 4 containers no ar; o `caddy` continua saindo para
+  a internet (`wget --spider` no diretorio ACME do Let's Encrypt: ok); logs do `caddy` sem erros.
+  De fora: SSH novo, site e API funcionando.
+- Ja feito em 11/11: `/etc/docker/daemon.json` com logs `local` rotacionados, `live-restore` e
+  `no-new-privileges`.
+
 ## Pendencias
 
 - Download automatico: `download.inep.gov.br` envia so o certificado final (falta o intermediario
