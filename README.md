@@ -85,8 +85,9 @@ Configuracao do host, fora do repositorio:
    medidas (containers sem privilegios, `cap_drop`, rede interna) ja reduzem o risco.
 4. **Acesso ao Docker.** O grupo `docker` equivale a root: so o administrador nele
    (`getent group docker`). Nenhum container monta `/var/run/docker.sock` (o compose nao monta).
-5. **SSH.** Apenas chave: `PasswordAuthentication no` e `PermitRootLogin no` em
-   `/etc/ssh/sshd_config.d/`; considere `fail2ban`. Antes de aplicar, confirme que sua chave ja funciona
+5. **SSH.** `PermitRootLogin no` e `X11Forwarding no` em `/etc/ssh/sshd_config.d/`, com `fail2ban`
+   ativo. O ideal e aceitar apenas chave (`PasswordAuthentication no`); se a instituicao ainda nao
+   autorizou abandonar a senha, mantenha-a ligada, com senha forte e `fail2ban`. Antes de aplicar, confirme que sua chave ja funciona
    e valide com `sudo sshd -t`; depois de `sudo systemctl reload ssh`, teste o login numa **segunda
    sessao** antes de fechar a atual. Nao feche a porta 22 nem troque a porta do SSH sem ter outro acesso
    (console do provedor/VM).

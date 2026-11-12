@@ -48,7 +48,9 @@ Pendente:
    - `/etc/docker/daemon.json` com rotacao de logs, `live-restore` e `no-new-privileges`
      (userns-remap/rootless e opcional: testar e, se quebrar a pilha, manter o padrao).
    - Grupo `docker` so com o administrador; nenhum container monta `docker.sock`.
-   - SSH so por chave (`PasswordAuthentication no`, `PermitRootLogin no`); `unattended-upgrades` ativo.
+   - SSH: `PermitRootLogin no` e `X11Forwarding no`; `unattended-upgrades` e `fail2ban` ativos.
+     DECISAO DO USUARIO: o login por SENHA no SSH continua ligado (desativar depende de autorizacao da
+     instituicao). NAO mudar `PasswordAuthentication` nem exigir chave sem pedido expresso dele.
    Decisao do usuario: ficar com Docker Compose (k3s/Podman nao trazem ganho de seguranca por si so).
 
 ## Regras
