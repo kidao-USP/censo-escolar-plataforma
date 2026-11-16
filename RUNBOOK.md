@@ -32,8 +32,11 @@ Validado no servidor em 11/11/2026 e 12/11/2026:
 
 - Pilha no ar (`db`, `api`, `web`, `caddy`); usuario `censo_api` criado; extensoes `unaccent` e
   `pg_trgm` disponiveis no `postgres:17`.
-- **Anos carregados: 2023 e 2024** (217.625 e 215.545 escolas; soma de `QT_MAT_BAS` de 47,30 e 47,09
-  milhoes, coerente com o Inep). Banco com cerca de 1,6 GB. ETL de ~3 a 4 min por ano.
+- **Anos carregados: 2010 a 2024** (15 anos; 2010-2022 carregados em 16/11/2026). Cada ano validado
+  contra o CSV do Inep (escolas e somas de `QT_MAT_BAS`, `QT_DOC_BAS`, `QT_TUR_BAS` etc.); detalhes em
+  `docs/evidencias_deploy.md`. Banco com cerca de 9,8 GB. ETL de ~3 min por ano.
+- 2023 e 2024: 217.625 e 215.545 escolas; soma de `QT_MAT_BAS` de 47,30 e 47,09 milhoes, coerente
+  com o Inep.
 - CSV real confere com o esperado: 78 variaveis de matricula, 16 de docente e 26 de turma.
 - Consultas de 0,04 a 0,5 s, sem indices extras. Busca de municipios (`/api/municipios`) em ~0,12 s.
 - HTTPS com Let's Encrypt, redirecionamento HTTP->HTTPS (308), cabecalhos de seguranca, limite de
@@ -69,7 +72,8 @@ primeira criacao do volume.
 
 ### 4.3 Carregar ou recarregar um ano
 
-1. Confira `CENSO_ANOS` no `.env` do servidor (deve ser `2023 2024`).
+1. Confira `CENSO_ANOS` no `.env` do servidor (lista dos anos carregados, hoje de 2010 a 2024). Para um
+   ano so, use `docker compose run --rm etl --anos <ano>` (sem `--anos`, recarrega todos, ~45 min).
 2. O download automatico do Inep falha (o servidor do Inep nao envia o certificado intermediario).
    Baixe o ZIP de cada ano no navegador, em
    <https://www.gov.br/inep/pt-br/acesso-a-informacao/dados-abertos/microdados/censo-escolar>, envie-o
@@ -133,7 +137,7 @@ Procedimentos genericos estao no `README.md` (secao "Endurecimento do servidor")
   seguranca do `README.md`.
 - Repositorio publico, para a correcao pela banca.
 - Ficar com **Docker Compose** (k3s e Podman nao trazem ganho de seguranca por si so).
-- Anos **2023 e 2024** apenas; 2025 fica como limitacao documentada.
+- Anos **2010 a 2024** (decisao de 16/11/2026); 2025 fica como limitacao documentada.
 - Login por senha no SSH continua ligado (secao 5).
 - O HSTS do site (`includeSubDomains`) nao deve ser removido.
 

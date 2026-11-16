@@ -142,10 +142,13 @@ sobrepostas (total e recortes do mesmo total) nao devem ser somadas (`somar=true
 
 ## Anos e limitacoes
 
-* **Anos carregados:** 2023 (217.625 escolas) e 2024 (215.545 escolas). Os totais de matriculas da
-  educacao basica (`QT_MAT_BAS`) conferem com os divulgados pelo Inep. Resultados da carga em
-  `docs/evidencias_deploy.md`.
-* **Dados agregados por escola:** o CSV do Inep (2023 e 2024) traz uma linha por escola com contagens
+* **Anos carregados:** 2010 a 2024 (15 anos). Cada ano foi validado contra o CSV do Inep (numero de
+  escolas e somas de matriculas, docentes e turmas); tabela por ano em `docs/evidencias_deploy.md`.
+* **Variaveis por ano:** ate 2022 o Inep publica 40 variaveis de matricula, 16 de docente e 16 de turma;
+  a partir de 2023, 78, 16 e 26. Uma variavel que nao existe no ano volta vazia (nao como zero).
+* **2010 so traz escolas em atividade;** de 2011 em diante o arquivo inclui paralisadas e extintas. Para
+  comparar o numero de escolas entre anos, filtre `situacao=em_atividade`.
+* **Dados agregados por escola:** o CSV do Inep (2010 a 2024) traz uma linha por escola com contagens
   (`QT_MAT_*`, `QT_DOC_*`, `QT_TUR_*`). Por isso `/api/matriculas`, `/api/docentes` e `/api/turmas`
   devolvem **contagens agregadas**; a plataforma nao guarda nem expoe registros individuais de
   alunos ou docentes.
