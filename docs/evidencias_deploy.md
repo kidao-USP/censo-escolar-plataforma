@@ -168,6 +168,27 @@ Observacoes:
 - Variaveis que so existem a partir de 2023, consultadas em anos anteriores, voltam vazias (`dados: []`),
   sem erro; nao aparecem como zero.
 
+Conferencia com publicacoes oficiais do Inep/MEC (16/11/2026). O Inep conta como "escolas" as que tem
+matricula na educacao basica (`QT_MAT_BAS` > 0), por isso a comparacao usa essa contagem, e nao as
+"em atividade":
+
+| Ano | Plataforma: matriculas | Plataforma: escolas com matricula | Publicacao oficial | Confere |
+|---|---:|---:|---|---|
+| 2010 | 51.549.889 | 194.939 | 51.549.889 matriculas e 194.939 estabelecimentos (apresentacao dos resultados do Censo 2010; MEC) | exato |
+| 2018 | 48.455.867 | 181.939 | 48,5 milhoes de matriculas (arredondado) e 181.939 escolas (Notas Estatisticas 2018) | escolas exato; matriculas pelo arredondamento |
+
+Fontes:
+- Inep, Censo Escolar 2010 - visao geral dos principais resultados:
+  <https://download.inep.gov.br/download/censo/2010/apresentacao_divulgacao_censo_2010.pdf>
+- Inep, "Censo Escolar registra 51,5 milhoes de alunos matriculados em 2010":
+  <https://www.gov.br/inep/pt-br/centrais-de-conteudo/noticias/censo-escolar/censo-escolar-registra-515-milhoes-de-alunos-matriculados-em-2010>
+- MEC, "Censo registra 51,5 milhoes de matriculados em 2010":
+  <http://portal.mec.gov.br/ultimas-noticias/211-218175739/16179-censo-registra-515-milhoes-de-matriculados-em-2010>
+- Inep, Notas Estatisticas do Censo Escolar 2018 (jan/2019), colecao:
+  <https://riep.dev.app.rnp.br/collections/69315d43-c137-43d6-97cd-69e8965505c7/browse/title>
+
+O total exato de matriculas de 2018 na Sinopse Estatistica nao foi conferido (so o valor arredondado da nota).
+
 Tempos com os 15 anos carregados (3 execucoes via HTTPS; a primeira, com cache frio, e a mais lenta):
 
 | Consulta | Tempo |
